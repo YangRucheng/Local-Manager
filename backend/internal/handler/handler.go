@@ -446,6 +446,25 @@ func (h *Handler) GetAnnex(c *gin.Context) {
 	ok(c, a)
 }
 
+// ListAnnexes GET /api/annex?keyword=&page=&page_size=
+func (h *Handler) ListAnnexes(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	result, err := h.store.ListAnnexes(store.AnnexFilter{
+		Keyword:  c.Query("keyword"),
+		Page:     page,
+		PageSize: pageSize,
+	})
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+	for i := range result.Items {
+		result.Items[i].URL = annexURL(result.Items[i].ID)
+	}
+	ok(c, result)
+}
+
 // ServeAnnexFile GET /api/annex/:id/file
 func (h *Handler) ServeAnnexFile(c *gin.Context) {
 	id, okID := pathID(c)
@@ -476,31 +495,4 @@ func (h *Handler) RecomputeAnnex(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{"recomputed": true})
-}
-
-// CleanupAnnex POST /api/annex/cleanup —— 清理 ref_count=0 的孤儿附件（行 + 磁盘文件）
-func (h *Handler) CleanupAnnex(c *gin.Context) {
-	if err := h.store.RecomputeAllCounts(); err != nil {
-		serverError(c, err)
-		return
-	}
-	orphans, err := h.store.ListOrphanAnnexes()
-	if err != nil {
-		serverError(c, err)
-		return
-	}
-	type cleaned struct {
-		ID           int64  `json:"id"`
-		OriginalName string `json:"original_name"`
-	}
-	var deleted []cleaned
-	for _, a := range orphans {
-		_ = h.annex.DeleteFile(a)
-		if err := h.store.DeleteAnnex(a.ID); err != nil {
-			serverError(c, err)
-			return
-		}
-		deleted = append(deleted, cleaned{ID: a.ID, OriginalName: a.OriginalName})
-	}
-	ok(c, gin.H{"cleaned": deleted, "count": len(deleted)})
 }

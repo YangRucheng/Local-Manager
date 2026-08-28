@@ -38,10 +38,10 @@ func New(h *handler.Handler, distFS fs.FS) *gin.Engine {
 		api.DELETE("/equipment/:id", h.DeleteEquipment)
 		// 附件
 		api.POST("/annex/upload", h.UploadAnnex)
+		api.GET("/annex", h.ListAnnexes)
 		api.GET("/annex/:id", h.GetAnnex)
 		api.GET("/annex/:id/file", h.ServeAnnexFile)
 		api.POST("/annex/recompute", h.RecomputeAnnex)
-		api.POST("/annex/cleanup", h.CleanupAnnex)
 	}
 
 	if distFS != nil {

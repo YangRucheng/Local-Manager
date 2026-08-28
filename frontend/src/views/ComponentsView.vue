@@ -97,7 +97,7 @@ watch(keyword, (v) => {
   }, 300)
 })
 
-// 筛选/关键字变化 → 回到第一页
+// 筛选/关键字变化 - 回到第一页
 watch([roomFilter, cabinetFilter, keywordDebounced], () => {
   page.value = 1
   void loadData()
@@ -207,9 +207,7 @@ const columns = [
           style="width: 180px"
           @update:value="onCabinetSelect"
         />
-        <n-input v-model:value="keyword" placeholder="搜索名称 / 型号" clearable style="width: 220px">
-          <template #prefix>🔍</template>
-        </n-input>
+        <n-input v-model:value="keyword" placeholder="搜索名称 / 型号" clearable style="width: 220px" />
         <n-button type="primary" @click="openCreate">＋ 新建元器件</n-button>
       </n-space>
     </div>

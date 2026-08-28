@@ -9,6 +9,7 @@ const router = createRouter({
     { path: '/rooms', name: 'rooms', component: () => import('@/views/RoomsView.vue') },
     { path: '/cabinets', name: 'cabinets', component: () => import('@/views/CabinetsView.vue') },
     { path: '/components', name: 'components', component: () => import('@/views/ComponentsView.vue') },
+    { path: '/system/annex', name: 'annex', component: () => import('@/views/AnnexView.vue') },
   ],
 })
 

@@ -75,7 +75,7 @@ function removeRoom(room: Room) {
           <template #header>
             <div class="room-header">
               <div class="room-title">
-                <span class="room-name">🏢 {{ room.name }}</span>
+                <span class="room-name">{{ room.name }}</span>
                 <n-tag size="small" type="info" :bordered="false">
                   {{ room.cabinet_count }} 个配电柜
                 </n-tag>

@@ -50,6 +50,34 @@ export interface Annex {
   created_at: string
   updated_at: string
   url?: string
+  references?: AnnexRefInfo[]
+}
+
+/** 附件引用信息 */
+export interface AnnexRefInfo {
+  kind: 'room' | 'cabinet' | 'equipment'
+  id: number
+  name: string
+}
+
+/** 附件查询参数 */
+export interface AnnexQuery {
+  keyword?: string
+  page?: number
+  page_size?: number
+}
+
+/** 附件引用类型中文标签 */
+export const ANNEX_REF_KIND_LABEL: Record<AnnexRefInfo['kind'], string> = {
+  room: '配电室',
+  cabinet: '配电柜',
+  equipment: '元器件',
+}
+
+/** 格式化附件引用位置文本 */
+export function formatAnnexRefs(refs: AnnexRefInfo[] | undefined): string {
+  if (!refs || !refs.length) return ''
+  return refs.map((r) => `${ANNEX_REF_KIND_LABEL[r.kind]}：${r.name}`).join('；')
 }
 
 /** 分页结果 */

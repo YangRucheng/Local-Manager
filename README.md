@@ -4,9 +4,9 @@
 
 - 总表 8 列：配电室、配电柜、名称、型号、厂家、数量、备注、图片
 - 图片最多 9 张/条，以 uuid 重命名存储于 `./data/annex`
-- 左侧 tab：配电室 / 配电柜 / 元器件；配电室、配电柜支持名称 / 图片 / 备注，下拉菜单 + 弹窗新建，元器件弹窗新建
+- 左侧 tab：配电室 / 配电柜 / 元器件 / 系统管理▸附件管理；配电室、配电柜支持名称 / 图片 / 备注，下拉菜单 + 弹窗新建，元器件弹窗新建
 - 支持按配电室、配电柜筛选，按名称 / 型号搜索（后端过滤 + 分页）
-- 附件引用自动计数，可随时重算，孤儿图片可一键清理
+- 附件引用自动计数，可随时重算；附件管理页可查看附件清单与引用位置（不提供一键清理）
 - 数据持久化于 `./data/app.db`，重启不丢失；数据/附件目录启动时自动创建
 
 ## 技术栈
@@ -86,7 +86,7 @@ make test     # 后端 go test ./... + 前端 vitest run
 - `annex` 附件表：`uuid`（磁盘文件名）、`original_name`、`ext`、`mime_type`、`size`、`ref_count`（引用次数）
 - `annex_ref` 引用映射表：`annex_id` → `target_type`(room/cabinet/equipment) + `target_id` + `position`（图片顺序）
 
-**引用计数机制**：`annex.ref_count` 为冗余列，由 `annex_ref` 聚合而来。增删改引用时会对受影响附件即时重算；服务**启动时**自动全量重算；顶栏也提供「重算引用次数」按钮（`POST /api/annex/recompute`）。`ref_count=0` 的附件为孤儿（如上传后取消表单），顶栏「清理未引用图片」（`POST /api/annex/cleanup`）可删除其数据库记录与磁盘文件。
+**引用计数机制**：`annex.ref_count` 为冗余列，由 `annex_ref` 聚合而来。增删改引用时会对受影响附件即时重算；服务**启动时**自动全量重算；「系统管理 → 附件管理」页可查看附件清单（文件名/大小/引用次数/引用位置），并提供「重算引用次数」按钮（`POST /api/annex/recompute`）。`ref_count=0` 的附件（如上传后取消表单）会被保留，不提供一键清理。
 
 ## API 摘要
 
@@ -101,8 +101,8 @@ make test     # 后端 go test ./... + 前端 vitest run
 | PUT/DELETE | `/api/equipment/:id` | 更新 / 删除 |
 | POST | `/api/annex/upload` | multipart 上传图片（字段 `file`，≤10MB，uuid 落盘） |
 | GET | `/api/annex/:id/file` | 读取图片文件 |
+| GET | `/api/annex` | 附件列表 `?keyword=&page=&page_size=`（含引用位置） |
 | POST | `/api/annex/recompute` | 全量重算引用次数 |
-| POST | `/api/annex/cleanup` | 清理未引用附件 |
 
 ## 目录结构
 
@@ -119,7 +119,7 @@ make test     # 后端 go test ./... + 前端 vitest run
 ├── frontend/src/
 │   ├── api/                   # axios 接口封装
 │   ├── components/            # 图片上传/缩略图/三个表单弹窗
-│   ├── views/                 # RoomsView(配电室) / CabinetsView(配电柜) / ComponentsView(元器件)
+│   ├── views/                 # RoomsView(配电室) / CabinetsView(配电柜) / ComponentsView(元器件) / AnnexView(附件管理)
 │   └── utils/                 # 图片校验等
 ├── Makefile
 └── scripts/bootstrap-go.sh
@@ -128,4 +128,4 @@ make test     # 后端 go test ./... + 前端 vitest run
 ## 常见问题
 
 - **端口占用**：`PORT=9090 make run` 换端口。
-- **图片打不开**：检查 `./data/annex` 是否可读、文件是否被清理。
+- **图片打不开**：检查 `./data/annex` 是否可读。

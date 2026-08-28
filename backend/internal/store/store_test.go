@@ -253,13 +253,35 @@ func TestAnnexRefCountLifecycle(t *testing.T) {
 		t.Fatalf("重算后计数错误")
 	}
 
-	// 孤儿列表：a3,a4
-	orphans, err := st.ListOrphanAnnexes()
+	// 附件列表：总数 4；a2 被房间+柜引用（2 处），a3 无引用
+	res, err := st.ListAnnexes(AnnexFilter{PageSize: 50})
 	if err != nil {
-		t.Fatalf("列出孤儿失败: %v", err)
+		t.Fatalf("列出附件失败: %v", err)
 	}
-	if len(orphans) != 2 {
-		t.Fatalf("期望 2 个孤儿，得到 %d", len(orphans))
+	if res.Total != 4 {
+		t.Fatalf("期望 4 个附件，得到 %d", res.Total)
+	}
+	refs, err := st.AnnexReferences(a2.ID)
+	if err != nil {
+		t.Fatalf("查询附件引用失败: %v", err)
+	}
+	if len(refs) != 2 {
+		t.Fatalf("a2 应被 2 处引用，得到 %d", len(refs))
+	}
+	refsA3, err := st.AnnexReferences(a3.ID)
+	if err != nil {
+		t.Fatalf("查询附件引用失败: %v", err)
+	}
+	if len(refsA3) != 0 {
+		t.Fatalf("a3 应无引用，得到 %d", len(refsA3))
+	}
+	// 关键字过滤（按文件名）
+	res, err = st.ListAnnexes(AnnexFilter{Keyword: "a3", PageSize: 50})
+	if err != nil {
+		t.Fatalf("关键字过滤失败: %v", err)
+	}
+	if res.Total != 1 {
+		t.Fatalf("关键字过滤期望 1 个，得到 %d", res.Total)
 	}
 }
 

@@ -1,5 +1,5 @@
 import { http } from './client'
-import type { Annex } from '@/types'
+import type { Annex, AnnexQuery, PageResult } from '@/types'
 
 export const annexApi = {
   upload: (file: File) => {
@@ -12,6 +12,15 @@ export const annexApi = {
       .then((r) => r.data)
   },
   get: (id: number) => http.get<Annex>(`/annex/${id}`).then((r) => r.data),
+  list: (query: AnnexQuery = {}) =>
+    http
+      .get<PageResult<Annex>>('/annex', {
+        params: {
+          keyword: query.keyword || undefined,
+          page: query.page || 1,
+          page_size: query.page_size || 20,
+        },
+      })
+      .then((r) => r.data),
   recompute: () => http.post('/annex/recompute').then((r) => r.data),
-  cleanup: () => http.post<{ count: number; cleaned: { id: number; original_name: string }[] }>('/annex/cleanup').then((r) => r.data),
 }

@@ -54,6 +54,23 @@ type Annex struct {
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 	URL          string `json:"url,omitempty"`
+	// References 该附件被哪些目标引用（列表接口填充）。
+	References []AnnexRefInfo `json:"references,omitempty"`
+}
+
+// AnnexRefInfo 一条附件引用信息。
+type AnnexRefInfo struct {
+	Kind string `json:"kind"` // room | cabinet | equipment
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// AnnexListResult 附件分页列表结果。
+type AnnexListResult struct {
+	Items    []Annex `json:"items"`
+	Total    int64   `json:"total"`
+	Page     int     `json:"page"`
+	PageSize int     `json:"page_size"`
 }
 
 // AnnexRefTarget 附件引用的目标类型。
