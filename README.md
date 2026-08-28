@@ -42,6 +42,26 @@ make build-windows-amd64
 
 每个产物均为内嵌前端页面的静态单文件，拷到对应机器直接运行（Windows 运行 `.exe`）即可。
 
+### 体积说明与优化
+
+构建产物约 **19MB/平台**（Windows 略大），主要构成：
+- Go 运行时 + 标准库（基础体积，不可裁剪）
+- Gin v1.12 无条件携带 HTTP/3（quic-go，拖入大量 crypto/x509 代码）与 BSON/protobuf 绑定 —— 本项目用不到，但**为不改源码只加构建参数**而保留
+- `modernc.org/sqlite` 纯 Go 实现（比 CGO 版大，但换来三平台免交叉编译）
+
+已通过**纯构建参数**优化（不改任何源码/依赖）：
+
+| 参数 | 作用 | 节省 |
+| --- | --- | --- |
+| `-tags nomsgpack` | 去掉 gin 用不到的 msgpack 绑定（连带移除 ugorji codec） | ~6MB |
+| `-trimpath` | 裁剪编译路径 | 少量 |
+| `-ldflags "-s -w"` | 去掉 DWARF 调试信息与符号表 | ~2MB |
+| `-buildvcs=false` | 不嵌入 VCS 信息 | 少量 |
+
+> 对比：同样代码不加参数约 25.8MB → 加参数后约 19MB。
+
+**可选：UPX 二次压缩**（`make upx` 或 CI 手动触发勾选 compress）可再压到 **~7.6MB**（-60%）。注意：UPX 压缩后的 Windows 版可能被杀毒软件误报，且启动时需解压（略增内存/启动耗时），请按需使用。
+
 ### 开发模式（两个终端）
 
 ```bash

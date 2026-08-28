@@ -6,6 +6,12 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      compress:
+        description: '用 UPX 进一步压缩二进制（可选；Windows 版压缩后可能被杀软误报）'
+        required: false
+        default: false
+        type: boolean
 
 # 创建 GitHub Release / 上传资产需要 contents 写权限
 permissions:
@@ -94,7 +100,7 @@ jobs:
       - name: 运行后端测试
         if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
         working-directory: backend
-        run: go test ./... -count=1
+        run: go test -tags nomsgpack ./... -count=1
 
       - name: 交叉编译 ${{ matrix.label }}
         working-directory: backend
@@ -102,7 +108,14 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
-        run: go build -trimpath -ldflags "-s -w" -o ../bin/${{ matrix.artifact }} ./cmd/server
+        run: go build -tags nomsgpack -buildvcs=false -trimpath -ldflags "-s -w" -o ../bin/${{ matrix.artifact }} ./cmd/server
+
+      - name: 用 UPX 压缩（可选）
+        if: inputs.compress == true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq upx-ucl
+          upx -9 bin/${{ matrix.artifact }}
 
       - name: 生成校验和
         working-directory: bin

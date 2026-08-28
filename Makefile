@@ -5,10 +5,14 @@ BIN := bin
 WEBDIST := $(BACKEND_DIR)/cmd/server/webdist
 
 # 纯 Go 驱动（modernc.org/sqlite），CGO_ENABLED=0 可交叉编译各平台静态单文件
+# 体积优化（仅构建参数，不改源码）：
+#   -tags nomsgpack      去掉 gin 内置但用不到的 msgpack 绑定（连带移除 ugorji codec ~6MB）
+#   -buildvcs=false      不嵌入 VCS 版本信息
+#   -trimpath -ldflags -s -w   裁剪路径与 DWARF/符号表
 CGO_ENABLED := 0
-GOFLAGS := -trimpath -ldflags "-s -w"
+GOFLAGS := -tags nomsgpack -buildvcs=false -trimpath -ldflags "-s -w"
 
-.PHONY: help bootstrap frontend webdist backend build run dev test clean build-all \
+.PHONY: help bootstrap frontend webdist backend build run dev test clean build-all upx \
         build-linux-amd64 build-linux-arm64 build-windows-amd64
 
 help:
@@ -16,6 +20,7 @@ help:
 	@echo "  make bootstrap               安装 Go 工具链（仅首次/新机器需要）"
 	@echo "  make build                   构建本机二进制 $(BIN)/ledger"
 	@echo "  make build-all               构建三平台二进制（linux x64 / linux arm64 / windows x64）"
+	@echo "  make upx                     用 UPX 进一步压缩产物（可选，需先安装 upx）"
 	@echo "  make run                     构建并启动，访问 http://127.0.0.1:5288"
 	@echo "  make dev                     开发模式（见下方提示，需两个终端）"
 	@echo "  make test                    后端 go test + 前端 vitest"
@@ -58,6 +63,13 @@ build-windows-amd64: webdist
 
 build-all: frontend build-linux-amd64 build-linux-arm64 build-windows-amd64
 	@echo "✅ 三平台构建完成，产物位于 $(BIN)/"
+
+# 可选：UPX 后处理压缩（注意：Windows 版压缩后可能被杀软误报，按需使用）
+upx:
+	@command -v upx >/dev/null 2>&1 || { echo "未安装 upx，请先：apt-get install upx-ucl 或从 https://upx.github.io 下载"; exit 1; }
+	@for f in $(BIN)/ledger $(BIN)/ledger-linux-amd64 $(BIN)/ledger-linux-arm64 $(BIN)/ledger-windows-amd64.exe; do \
+	  if [ -f "$$f" ]; then upx -9 "$$f"; fi; \
+	done
 
 run: build
 	cd $(BACKEND_DIR) && ../$(BIN)/ledger
