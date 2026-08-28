@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	// 纯 Go 实现的 SQLite 驱动：CGO_ENABLED=0 即可交叉编译各平台静态单文件。
+	_ "modernc.org/sqlite"
 )
 
 // ErrNotFound 记录不存在。
@@ -38,8 +39,12 @@ func Open(dbPath string) (*Store, error) {
 			return nil, fmt.Errorf("创建数据目录: %w", err)
 		}
 	}
-	dsn := "file:" + dbPath + "?_busy_timeout=5000&_journal_mode=WAL&_foreign_keys=on&_synchronous=NORMAL"
-	db, err := sql.Open("sqlite3", dsn)
+	dsn := "file:" + dbPath +
+		"?_pragma=busy_timeout(5000)" +
+		"&_pragma=journal_mode(WAL)" +
+		"&_pragma=foreign_keys(1)" +
+		"&_pragma=synchronous(NORMAL)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("打开数据库: %w", err)
 	}

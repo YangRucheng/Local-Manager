@@ -12,25 +12,20 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: 构建并发布二进制
+  # 前端只构建一次，供三个平台复用（避免重复构建）
+  build-frontend:
+    name: 构建前端
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
-
-      - name: 安装 Go 工具链
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
 
       - name: 安装 pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 11
 
-      - name: 安装 Node.js
+      - name: 安装 Node.js（启用 pnpm 依赖缓存）
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -45,41 +40,106 @@ jobs:
         working-directory: frontend
         run: pnpm build
 
+      - name: 上传前端产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          if-no-files-found: error
+
+  # 三平台并行交叉编译（纯 Go 驱动，CGO_ENABLED=0 静态单文件，无需交叉编译器）
+  build-binary:
+    name: 构建 ${{ matrix.label }}
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x64
+            goos: linux
+            goarch: amd64
+            artifact: ledger-linux-amd64
+          - label: Linux arm64
+            goos: linux
+            goarch: arm64
+            artifact: ledger-linux-arm64
+          - label: Windows x64
+            goos: windows
+            goarch: amd64
+            artifact: ledger-windows-amd64.exe
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Go 工具链（启用模块与构建缓存）
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: 下载前端产物
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
       - name: 复制前端产物到后端内嵌目录
         run: |
           rm -rf backend/cmd/server/webdist
           mkdir -p backend/cmd/server/webdist
           cp -r frontend/dist/. backend/cmd/server/webdist/
 
+      # 测试只跑一次（linux amd64），避免三平台重复
       - name: 运行后端测试
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
         working-directory: backend
         run: go test ./... -count=1
 
-      - name: 构建二进制（单文件，内嵌前端）
+      - name: 交叉编译 ${{ matrix.label }}
         working-directory: backend
-        run: go build -trimpath -ldflags "-s -w" -o ../bin/ledger ./cmd/server
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: go build -trimpath -ldflags "-s -w" -o ../bin/${{ matrix.artifact }} ./cmd/server
 
       - name: 生成校验和
         working-directory: bin
-        run: sha256sum ledger > ledger.sha256
+        run: sha256sum ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
 
-      - name: 上传构建产物（工作流页面可下载）
+      - name: 上传二进制产物
         uses: actions/upload-artifact@v4
         with:
-          name: ledger-linux-amd64
+          name: ${{ matrix.artifact }}
           path: |
-            bin/ledger
-            bin/ledger.sha256
+            bin/${{ matrix.artifact }}
+            bin/${{ matrix.artifact }}.sha256
           if-no-files-found: error
 
-      - name: 发布 GitHub Release（仅打标签时）
-        if: startsWith(github.ref, 'refs/tags/')
+  # 打标签时把三平台二进制统一发布到 GitHub Release
+  release:
+    name: 发布 Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载全部二进制产物
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ledger-*
+          merge-multiple: true
+          path: release-artifacts
+
+      - name: 创建 GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            bin/ledger bin/ledger.sha256 \
+            release-artifacts/* \
             --repo "${{ github.repository }}" \
             --title "发布 ${GITHUB_REF_NAME}" \
-            --notes "由「自动构建发布二进制」工作流自动构建的 Linux amd64 单文件二进制（内嵌前端页面）。
-            运行：chmod +x ledger && ./ledger，然后访问 http://127.0.0.1:8080"
+            --notes "由「自动构建发布二进制」工作流自动构建的三平台单文件二进制（内嵌前端页面）。
+            - Linux x64 / Linux arm64 / Windows x64
+            - 均为静态单文件（纯 Go SQLite 驱动，无需安装依赖）
+            运行：./ledger（Windows 为 ledger-windows-amd64.exe），然后访问 http://127.0.0.1:5288"

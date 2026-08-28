@@ -14,31 +14,42 @@
 | 层 | 技术 |
 | --- | --- |
 | 前端 | Vue 3 + Vite + Vue Router + Naive UI + TypeScript |
-| 后端 | Go + Gin + sqlite3（mattn/go-sqlite3） |
+| 后端 | Go + Gin + sqlite3（`modernc.org/sqlite`，纯 Go 实现） |
 | 存储 | SQLite（`./data/app.db`）+ 附件目录（`./data/annex`） |
 
-生产模式下前端构建产物由后端 `go:embed` 托管，最终是**单文件二进制** `bin/ledger`，单端口访问。
+生产模式下前端构建产物由后端 `go:embed` 托管，最终是**单文件二进制**，单端口访问。SQLite 采用纯 Go 驱动，`CGO_ENABLED=0` 即可交叉编译出**静态单文件**，支持 Linux x64 / Linux arm64 / Windows x64，无需安装任何依赖或交叉编译器。
 
 ## 快速开始
 
-前置：Node.js 18+、pnpm、gcc（用于 CGO 编译 sqlite 驱动）。Go 若未安装，用 `make bootstrap` 自动安装最新稳定版。
+前置：Node.js 18+、pnpm。Go 若未安装，用 `make bootstrap` 自动安装最新稳定版。
 
 ```bash
 make run     # 构建前端 + 后端并启动
-# 打开 http://127.0.0.1:8080
+# 打开 http://127.0.0.1:5288
 ```
 
-- 端口：环境变量 `PORT`（默认 8080）
+- 端口：环境变量 `PORT`（默认 5288）
 - 数据目录：环境变量 `DATA_DIR`（默认 `./data`）
+
+### 多平台构建
+
+```bash
+make build-all     # 产出 bin/ledger-linux-amd64、ledger-linux-arm64、ledger-windows-amd64.exe
+make build-linux-amd64    # 单独构建某一平台
+make build-linux-arm64
+make build-windows-amd64
+```
+
+每个产物均为内嵌前端页面的静态单文件，拷到对应机器直接运行（Windows 运行 `.exe`）即可。
 
 ### 开发模式（两个终端）
 
 ```bash
 # 终端 1
-cd backend && go run ./cmd/server        # API :8080
+cd backend && go run ./cmd/server        # API :5288
 
 # 终端 2
-cd frontend && pnpm dev                   # 页面 http://localhost:5173，/api 已代理到 :8080
+cd frontend && pnpm dev                   # 页面 http://localhost:5173，/api 已代理到 :5288
 ```
 
 ### 测试
@@ -97,5 +108,4 @@ make test     # 后端 go test ./... + 前端 vitest run
 ## 常见问题
 
 - **端口占用**：`PORT=9090 make run` 换端口。
-- **CGO 编译**：sqlite 驱动使用 CGO，需要 gcc；若需纯静态可改用 `modernc.org/sqlite`（替换 go.mod 驱动即可）。
 - **图片打不开**：检查 `./data/annex` 是否可读、文件是否被清理。

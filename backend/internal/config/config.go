@@ -8,7 +8,7 @@ import (
 
 // Config 描述应用的运行配置。
 type Config struct {
-	// Port 监听端口，默认 8080。
+	// Port 监听端口，默认 5288。
 	Port string
 	// DataDir 数据目录（sqlite 与 annex 子目录均位于其下），默认 ./data。
 	DataDir string
@@ -16,11 +16,11 @@ type Config struct {
 
 // FromEnv 从环境变量读取配置并填充默认值。
 //
-//	PORT     监听端口，默认 8080
+//	PORT     监听端口，默认 5288
 //	DATA_DIR 数据目录，默认 ./data
 func FromEnv() Config {
 	return Config{
-		Port:    envOr("PORT", "8080"),
+		Port:    envOr("PORT", "5288"),
 		DataDir: envOr("DATA_DIR", "./data"),
 	}
 }
