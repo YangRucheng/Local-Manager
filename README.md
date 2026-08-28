@@ -4,10 +4,10 @@
 
 - 总表 8 列：配电室、配电柜、名称、型号、厂家、数量、备注、图片
 - 图片最多 9 张/条，以 uuid 重命名存储于 `./data/annex`
-- 配电室、配电柜支持名称 / 图片 / 备注，下拉菜单 + 弹窗新建，另有管理页
+- 左侧 tab：配电室 / 配电柜 / 元器件；配电室、配电柜支持名称 / 图片 / 备注，下拉菜单 + 弹窗新建，元器件弹窗新建
 - 支持按配电室、配电柜筛选，按名称 / 型号搜索（后端过滤 + 分页）
 - 附件引用自动计数，可随时重算，孤儿图片可一键清理
-- 数据持久化于 `./data/app.db`，重启不丢失
+- 数据持久化于 `./data/app.db`，重启不丢失；数据/附件目录启动时自动创建
 
 ## 技术栈
 
@@ -86,7 +86,7 @@ make test     # 后端 go test ./... + 前端 vitest run
 - `annex` 附件表：`uuid`（磁盘文件名）、`original_name`、`ext`、`mime_type`、`size`、`ref_count`（引用次数）
 - `annex_ref` 引用映射表：`annex_id` → `target_type`(room/cabinet/equipment) + `target_id` + `position`（图片顺序）
 
-**引用计数机制**：`annex.ref_count` 为冗余列，由 `annex_ref` 聚合而来。增删改引用时会对受影响附件即时重算；服务**启动时**自动全量重算；管理页也提供「重算引用次数」按钮（`POST /api/annex/recompute`）。`ref_count=0` 的附件为孤儿（如上传后取消表单），管理页「清理未引用图片」（`POST /api/annex/cleanup`）可删除其数据库记录与磁盘文件。
+**引用计数机制**：`annex.ref_count` 为冗余列，由 `annex_ref` 聚合而来。增删改引用时会对受影响附件即时重算；服务**启动时**自动全量重算；顶栏也提供「重算引用次数」按钮（`POST /api/annex/recompute`）。`ref_count=0` 的附件为孤儿（如上传后取消表单），顶栏「清理未引用图片」（`POST /api/annex/cleanup`）可删除其数据库记录与磁盘文件。
 
 ## API 摘要
 
@@ -119,7 +119,7 @@ make test     # 后端 go test ./... + 前端 vitest run
 ├── frontend/src/
 │   ├── api/                   # axios 接口封装
 │   ├── components/            # 图片上传/缩略图/三个表单弹窗
-│   ├── views/                 # LedgerView(总表) / ManageView(管理)
+│   ├── views/                 # RoomsView(配电室) / CabinetsView(配电柜) / ComponentsView(元器件)
 │   └── utils/                 # 图片校验等
 ├── Makefile
 └── scripts/bootstrap-go.sh

@@ -117,17 +117,11 @@ jobs:
           sudo apt-get install -y -qq upx-ucl
           upx -9 bin/${{ matrix.artifact }}
 
-      - name: 生成校验和
-        working-directory: bin
-        run: sha256sum ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
-
       - name: 上传二进制产物
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: |
-            bin/${{ matrix.artifact }}
-            bin/${{ matrix.artifact }}.sha256
+          path: bin/${{ matrix.artifact }}
           if-no-files-found: error
 
   # 打标签时把三平台二进制统一发布到 GitHub Release

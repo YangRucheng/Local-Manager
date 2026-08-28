@@ -2,9 +2,11 @@
 package router
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,7 +16,7 @@ import (
 // New 构造 gin.Engine：挂载 /api 路由；distFS 非空时托管前端（SPA fallback）。
 func New(h *handler.Handler, distFS fs.FS) *gin.Engine {
 	r := gin.New()
-	r.Use(gin.Recovery(), gin.Logger())
+	r.Use(gin.Recovery(), gin.LoggerWithFormatter(accessLogFormatter))
 
 	api := r.Group("/api")
 	{
@@ -50,6 +52,27 @@ func New(h *handler.Handler, distFS fs.FS) *gin.Engine {
 		})
 	}
 	return r
+}
+
+// accessLogFormatter 输出直观可读的访问日志：
+//
+//	[访问] 2026-08-28 12:00:00 | GET /api/rooms | 200 | 3.2ms | 127.0.0.1
+//	[告警] 2026-08-28 12:00:00 | POST /api/rooms | 400 | 0.5ms | 127.0.0.1
+func accessLogFormatter(param gin.LogFormatterParams) string {
+	level := "访问"
+	if param.StatusCode >= 400 {
+		level = "告警"
+	}
+	latency := param.Latency.Round(time.Microsecond).String()
+	return fmt.Sprintf("[%s] %s | %-6s %s | %d | %s | %s\n",
+		level,
+		param.TimeStamp.Format("2006-01-02 15:04:05"),
+		param.Method,
+		param.Path,
+		param.StatusCode,
+		latency,
+		param.ClientIP,
+	)
 }
 
 // mountStatic 以 SPA 方式托管前端产物：命中文件返回文件，否则回退 index.html。

@@ -128,7 +128,7 @@ function remove(id: number) {
   background: #fafbfd;
 }
 .image-uploader:focus-visible {
-  outline: 2px solid rgba(24, 160, 88, 0.3);
+  outline: 2px solid rgba(37, 99, 235, 0.3);
   outline-offset: 2px;
 }
 .image-item {
@@ -165,9 +165,9 @@ function remove(id: number) {
     color 0.2s ease;
 }
 .upload-trigger:hover {
-  border-color: #18a058;
-  background: #f3fbf7;
-  color: #18a058;
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
 }
 .upload-trigger:disabled {
   cursor: wait;

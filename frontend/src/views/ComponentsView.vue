@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { roomApi } from '@/api/rooms'
 import { cabinetApi } from '@/api/cabinets'
@@ -12,7 +11,6 @@ import RecordFormModal from '@/components/RecordFormModal.vue'
 import RoomFormModal from '@/components/RoomFormModal.vue'
 import CabinetFormModal from '@/components/CabinetFormModal.vue'
 
-const router = useRouter()
 const message = useMessage()
 
 const NEW_ROOM = '__new_room__'
@@ -149,7 +147,7 @@ function onCabinetSaved(cab: Cabinet) {
   if (!roomFilter.value) roomFilter.value = cab.room_id
 }
 
-// 台账弹窗
+// 元器件弹窗（新建/编辑）
 function openCreate() {
   editingRecord.value = null
   recordModalShow.value = true
@@ -189,99 +187,78 @@ const columns = [
 </script>
 
 <template>
-  <n-layout position="absolute" class="page">
-    <n-layout-header class="header" bordered>
-      <div class="header-inner">
-        <div class="title">
-          <span class="logo">⚡</span>
-          <span>本地电气台账</span>
-        </div>
-        <div class="header-actions">
-          <n-button size="small" secondary @click="router.push('/manage')">配电室 / 配电柜管理</n-button>
-        </div>
-      </div>
-    </n-layout-header>
+  <div>
+    <div class="toolbar">
+      <n-space align="center" :size="10">
+        <n-select
+          :value="roomFilter"
+          placeholder="配电室（全部）"
+          clearable
+          :options="roomOptions"
+          :loading="baseLoading"
+          style="width: 180px"
+          @update:value="onRoomSelect"
+        />
+        <n-select
+          :value="cabinetFilter"
+          placeholder="配电柜（全部）"
+          clearable
+          :options="cabinetOptions"
+          style="width: 180px"
+          @update:value="onCabinetSelect"
+        />
+        <n-input v-model:value="keyword" placeholder="搜索名称 / 型号" clearable style="width: 220px">
+          <template #prefix>🔍</template>
+        </n-input>
+        <n-button type="primary" @click="openCreate">＋ 新建元器件</n-button>
+      </n-space>
+    </div>
 
-    <n-layout-content class="content" content-style="padding: 16px 20px 40px">
-      <div class="toolbar">
-        <n-space align="center" :size="10">
-          <n-select
-            :value="roomFilter"
-            placeholder="配电室（全部）"
-            clearable
-            :options="roomOptions"
-            :loading="baseLoading"
-            style="width: 180px"
-            @update:value="onRoomSelect"
-          />
-          <n-select
-            :value="cabinetFilter"
-            placeholder="配电柜（全部）"
-            clearable
-            :options="cabinetOptions"
-            style="width: 180px"
-            @update:value="onCabinetSelect"
-          />
-          <n-input
-            v-model:value="keyword"
-            placeholder="搜索名称 / 型号"
-            clearable
-            style="width: 220px"
-          >
-            <template #prefix>🔍</template>
-          </n-input>
-          <n-button type="primary" @click="openCreate">＋ 新建记录</n-button>
-        </n-space>
-      </div>
-
-      <n-card :bordered="false" class="table-card">
-        <template #header>
-          <div class="card-header">
-            <span>总表</span>
-            <n-text depth="3" style="font-size: 12px">
-              共 {{ total }} 条记录
-            </n-text>
-          </div>
+    <n-card :bordered="false" class="table-card">
+      <template #header>
+        <div class="card-header">
+          <span>元器件列表</span>
+          <n-text depth="3" style="font-size: 12px">共 {{ total }} 条</n-text>
+        </div>
+      </template>
+      <n-data-table
+        :columns="columns"
+        :data="items"
+        :loading="loading"
+        :row-key="(row: Equipment) => row.id"
+        :bordered="false"
+        :scroll-x="1150"
+      >
+        <template #empty>
+          <n-empty description="暂无元器件，点击「新建元器件」添加" />
         </template>
-        <n-data-table
-          :columns="columns"
-          :data="items"
-          :loading="loading"
-          :row-key="(row: Equipment) => row.id"
-          :bordered="false"
-          :scroll-x="1150"
-        >
-          <template #empty>
-            <n-empty description="暂无台账记录，点击「新建记录」添加" />
-          </template>
-          <template #cell-image_ids="{ row }">
-            <ImageThumbnails :image-ids="(row as Equipment).image_ids" :size="40" />
-          </template>
-          <template #cell-actions="{ row }">
-            <n-space :size="6">
-              <n-button size="tiny" @click="openEdit(row as Equipment)">编辑</n-button>
-              <n-popconfirm @positive-click="removeRecord(row as Equipment)">
-                <template #trigger>
-                  <n-button size="tiny" type="error" secondary>删除</n-button>
-                </template>
-                确定删除「{{ (row as Equipment).name }}」吗？
-              </n-popconfirm>
-            </n-space>
-          </template>
-        </n-data-table>
+        <template #cell-image_ids="{ row }">
+          <ImageThumbnails :image-ids="(row as Equipment).image_ids" :size="40" />
+        </template>
+        <template #cell-actions="{ row }">
+          <n-space :size="6">
+            <n-button size="tiny" @click="openEdit(row as Equipment)">编辑</n-button>
+            <n-popconfirm @positive-click="removeRecord(row as Equipment)">
+              <template #trigger>
+                <n-button size="tiny" type="error" secondary>删除</n-button>
+              </template>
+              确定删除「{{ (row as Equipment).name }}」吗？
+            </n-popconfirm>
+          </n-space>
+        </template>
+      </n-data-table>
 
-        <div class="pagination">
-          <n-pagination
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            :item-count="total"
-            :page-sizes="[20, 50, 100]"
-            show-size-picker
-            :page-slot="7"
-          />
-        </div>
-      </n-card>
-    </n-layout-content>
+      <div class="pagination">
+        <n-pagination
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          :item-count="total"
+          :page-sizes="[20, 50, 100]"
+          show-size-picker
+          :page-slot="7"
+        />
+      </div>
+    </n-card>
 
     <RecordFormModal
       v-model:show="recordModalShow"
@@ -299,41 +276,10 @@ const columns = [
       :default-room-id="roomFilter ?? undefined"
       @saved="onCabinetSaved"
     />
-  </n-layout>
+  </div>
 </template>
 
 <style scoped>
-.page {
-  background: #f5f7fa;
-}
-.header {
-  background: #fff;
-}
-.header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 20px;
-}
-.title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 17px;
-  font-weight: 600;
-}
-.logo {
-  font-size: 20px;
-}
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-.content {
-  max-width: 1280px;
-  margin: 0 auto;
-}
 .toolbar {
   margin-bottom: 12px;
 }

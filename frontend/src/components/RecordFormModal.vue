@@ -124,7 +124,7 @@ async function submit() {
   <n-modal
     :show="show"
     preset="card"
-    :title="record ? '编辑台账记录' : '新建台账记录'"
+    :title="record ? '编辑元器件' : '新建元器件'"
     style="width: 640px"
     :mask-closable="false"
     @update:show="(v: boolean) => emit('update:show', v)"

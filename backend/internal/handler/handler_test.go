@@ -171,7 +171,7 @@ func TestEquipmentAPIValidation(t *testing.T) {
 	var ids []int64
 	for i := 0; i < 10; i++ {
 		a := model.Annex{
-			UUID: "test-" + strconv.FormatInt(int64(i), 10) + "-" + uuid.NewString(),
+			UUID:         "test-" + strconv.FormatInt(int64(i), 10) + "-" + uuid.NewString(),
 			OriginalName: "a.png", Ext: ".png", MimeType: "image/png", Size: 1,
 		}
 		ins, err := env.store.InsertAnnex(a)
